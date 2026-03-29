@@ -96,7 +96,7 @@ ai-opsctl/
 
 In active development. Phase 1 (infrastructure + seed generator) complete.
 
-Demo placeholder: [ai.opsctl.tech](https://ai.opsctl.tech) (login: `admin` / `admin`)
+Demo will be available at `ai.opsctl.tech` — currently redirects to this repository.
 
 ## Author
 
