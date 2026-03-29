@@ -13,7 +13,7 @@ Demo/portfolio AI analytics platform for affiliate marketing data. Doubles as st
 
 **Key constraints:**
 - 100% fake data — NDA-safe, no company data
-- Patterns based on offshore-leads structure but fully anonymized
+- Realistic affiliate marketing data patterns, fully synthetic
 - MLX for Apple Silicon native fine-tuning + inference
 - Ollama as fallback for x86 VPS deployment
 
