@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// === Auth ===
+
+model User {
+  id            String   @id @default(cuid())
+  login         String   @unique
+  passwordHash  String   @map("password_hash")
+  language      String   @default("en") // en, ru, ua
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  conversations Conversation[]
+
+  @@map("users")
+}
+
+// === Chat ===
+
+model Conversation {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  title          String   @default("New conversation")
+  modelVersion   String?  @map("model_version")
+  datasetVersion String?  @map("dataset_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, createdAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           String   // user, assistant, system
+  content        String
+  tokensIn       Int?     @map("tokens_in")
+  tokensOut      Int?     @map("tokens_out")
+  latencyMs      Int?     @map("latency_ms")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// === Datasets ===
+
+enum DatasetStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Dataset {
+  id             String        @id @default(cuid())
+  name           String
+  version        String        // semver: v1.0.0
+  description    String?
+  status         DatasetStatus @default(DRAFT)
+  recordCount    Int           @default(0) @map("record_count")
+  dateRangeStart DateTime?     @map("date_range_start")
+  dateRangeEnd   DateTime?     @map("date_range_end")
+  generatorParams Json?        @map("generator_params")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  metadata       DatasetMetadata[]
+  buyers         DsBuyer[]
+  domains        DsDomain[]
+  servers        DsServer[]
+  offers         DsOffer[]
+  leads          DsLead[]
+  expenses       DsExpense[]
+  incomes        DsIncome[]
+  trainingRuns   TrainingRun[]
+  ragCollections RagCollection[]
+
+  @@unique([name, version])
+  @@map("datasets")
+}
+
+model DatasetMetadata {
+  id        String @id @default(cuid())
+  datasetId String @map("dataset_id")
+  key       String
+  value     Json
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@unique([datasetId, key])
+  @@map("dataset_metadata")
+}
+
+// === Fake CRM Data ===
+
+model DsBuyer {
+  id        String  @id @default(cuid())
+  datasetId String  @map("dataset_id")
+  tag       String
+  name      String
+  team      String
+  vertical  String
+  isActive  Boolean @default(true) @map("is_active")
+
+  dataset  Dataset     @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  domains  DsDomain[]
+  leads    DsLead[]
+  expenses DsExpense[]
+  incomes  DsIncome[]
+
+  @@index([datasetId])
+  @@map("ds_buyers")
+}
+
+model DsServer {
+  id          String  @id @default(cuid())
+  datasetId   String  @map("dataset_id")
+  ip          String
+  provider    String
+  location    String
+  monthlyCost Decimal @map("monthly_cost") @db.Decimal(10, 2)
+  domainCount Int     @default(0) @map("domain_count")
+  status      String  @default("active")
+
+  dataset Dataset    @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  domains DsDomain[]
+
+  @@index([datasetId])
+  @@map("ds_servers")
+}
+
+model DsDomain {
+  id          String   @id @default(cuid())
+  datasetId   String   @map("dataset_id")
+  domainName  String   @map("domain_name")
+  serverId    String?  @map("server_id")
+  buyerId     String?  @map("buyer_id")
+  status      String   @default("active")
+  geo         String?
+  tld         String
+  registrar   String   @default("Namecheap")
+  monthlyCost Decimal  @map("monthly_cost") @db.Decimal(10, 2)
+  createdDate DateTime @map("created_date")
+
+  dataset Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  server  DsServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  buyer   DsBuyer?  @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  leads   DsLead[]
+
+  @@index([datasetId])
+  @@index([buyerId])
+  @@map("ds_domains")
+}
+
+model DsOffer {
+  id             String  @id @default(cuid())
+  datasetId      String  @map("dataset_id")
+  name           String
+  vertical       String
+  geo            String
+  lang           String
+  conversionRate Decimal @map("conversion_rate") @db.Decimal(5, 4)
+  payoutAmount   Decimal @map("payout_amount") @db.Decimal(10, 2)
+  payoutCurrency String  @default("USD") @map("payout_currency")
+
+  dataset Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  leads   DsLead[]
+  incomes DsIncome[]
+
+  @@index([datasetId])
+  @@map("ds_offers")
+}
+
+model DsLead {
+  id        String   @id @default(cuid())
+  datasetId String   @map("dataset_id")
+  domainId  String?  @map("domain_id")
+  offerId   String?  @map("offer_id")
+  buyerId   String?  @map("buyer_id")
+  geo       String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  email     String
+  phone     String
+  source    String   @default("organic")
+  crmStatus String   @default("success") @map("crm_status")
+  isTest    Boolean  @default(false) @map("is_test")
+  createdAt DateTime @map("created_at")
+
+  dataset Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  domain  DsDomain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  offer   DsOffer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  buyer   DsBuyer?  @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+
+  @@index([datasetId, createdAt])
+  @@index([buyerId])
+  @@index([geo])
+  @@index([crmStatus])
+  @@map("ds_leads")
+}
+
+model DsExpense {
+  id        String   @id @default(cuid())
+  datasetId String   @map("dataset_id")
+  buyerId   String?  @map("buyer_id")
+  category  String
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  date      DateTime
+
+  dataset Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  buyer   DsBuyer? @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+
+  @@index([datasetId, date])
+  @@index([buyerId])
+  @@map("ds_expenses")
+}
+
+model DsIncome {
+  id        String   @id @default(cuid())
+  datasetId String   @map("dataset_id")
+  buyerId   String?  @map("buyer_id")
+  offerId   String?  @map("offer_id")
+  geo       String
+  type      String
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  date      DateTime
+
+  dataset Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  buyer   DsBuyer? @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  offer   DsOffer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  @@index([datasetId, date])
+  @@index([buyerId])
+  @@index([geo])
+  @@map("ds_incomes")
+}
+
+// === ML Training ===
+
+enum TrainingStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model TrainingRun {
+  id           String         @id @default(cuid())
+  datasetId    String         @map("dataset_id")
+  modelBase    String         @map("model_base")
+  adapterName  String         @map("adapter_name")
+  hyperparams  Json
+  metrics      Json?
+  status       TrainingStatus @default(PENDING)
+  startedAt    DateTime?      @map("started_at")
+  completedAt  DateTime?      @map("completed_at")
+  durationSec  Int?           @map("duration_sec")
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  dataset     Dataset              @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  comparisonsA TrainingComparison[] @relation("ComparisonRunA")
+  comparisonsB TrainingComparison[] @relation("ComparisonRunB")
+
+  @@index([datasetId])
+  @@index([status])
+  @@map("training_runs")
+}
+
+model TrainingComparison {
+  id              String   @id @default(cuid())
+  runAId          String   @map("run_a_id")
+  runBId          String   @map("run_b_id")
+  comparisonNotes String?  @map("comparison_notes")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  runA TrainingRun @relation("ComparisonRunA", fields: [runAId], references: [id], onDelete: Cascade)
+  runB TrainingRun @relation("ComparisonRunB", fields: [runBId], references: [id], onDelete: Cascade)
+
+  @@map("training_comparisons")
+}
+
+// === RAG ===
+
+enum RagStatus {
+  INDEXING
+  READY
+  FAILED
+}
+
+model RagCollection {
+  id             String    @id @default(cuid())
+  datasetId      String    @map("dataset_id")
+  name           String
+  docCount       Int       @default(0) @map("doc_count")
+  embeddingModel String    @default("all-MiniLM-L6-v2") @map("embedding_model")
+  status         RagStatus @default(INDEXING)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@index([datasetId])
+  @@map("rag_collections")
+}

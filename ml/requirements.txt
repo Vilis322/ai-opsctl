@@ -1,0 +1,20 @@
+# Seed generator
+sqlalchemy==2.0.*
+psycopg2-binary==2.9.*
+faker==33.*
+phonenumbers==8.*
+
+# ML (for later phases, install now)
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+langchain==0.3.*
+langchain-community==0.3.*
+chromadb==0.6.*
+sentence-transformers==3.*
+peft==0.14.*
+transformers==4.*
+huggingface-hub==0.28.*
+
+# Testing
+pytest==8.*
+pytest-asyncio==0.25.*
