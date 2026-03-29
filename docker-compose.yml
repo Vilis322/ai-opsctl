@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: ai-opsctl-postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ai_opsctl}
       POSTGRES_USER: ${POSTGRES_USER:-opsctl}
