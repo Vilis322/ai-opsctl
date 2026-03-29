@@ -147,3 +147,60 @@ def test_generate_leads_fired_buyer_no_late_leads():
     kendall_leads = [l for l in leads if l["buyer_id"] == kendall["id"]]
     late_leads = [l for l in kendall_leads if l["created_at"].month > cfg.fired_buyer_month]
     assert len(late_leads) == 0
+
+
+from seeds.financials import generate_financials
+
+
+def test_generate_financials_has_incomes_and_expenses():
+    cfg = GeneratorConfig(seed=42, total_leads=1000)
+    random.seed(cfg.seed)
+    buyers = generate_buyers(cfg)
+    servers = generate_servers(cfg)
+    domains = generate_domains(cfg, buyers, servers)
+    offers = generate_offers(cfg)
+    leads = generate_leads(cfg, buyers, domains, offers)
+    incomes, expenses = generate_financials(cfg, buyers, leads, offers, domains, servers)
+    assert len(incomes) > 0
+    assert len(expenses) > 0
+
+
+def test_generate_financials_income_types():
+    cfg = GeneratorConfig(seed=42, total_leads=1000)
+    random.seed(cfg.seed)
+    buyers = generate_buyers(cfg)
+    servers = generate_servers(cfg)
+    domains = generate_domains(cfg, buyers, servers)
+    offers = generate_offers(cfg)
+    leads = generate_leads(cfg, buyers, domains, offers)
+    incomes, expenses = generate_financials(cfg, buyers, leads, offers, domains, servers)
+    types = {i["type"] for i in incomes}
+    assert types.issubset({"cpl", "cpa", "crg"})
+
+
+def test_generate_financials_expense_categories():
+    cfg = GeneratorConfig(seed=42, total_leads=1000)
+    random.seed(cfg.seed)
+    buyers = generate_buyers(cfg)
+    servers = generate_servers(cfg)
+    domains = generate_domains(cfg, buyers, servers)
+    offers = generate_offers(cfg)
+    leads = generate_leads(cfg, buyers, domains, offers)
+    incomes, expenses = generate_financials(cfg, buyers, leads, offers, domains, servers)
+    categories = {e["category"] for e in expenses}
+    assert categories.issubset({"domains", "servers", "tools", "advertising", "team"})
+
+
+def test_generate_financials_positive_amounts():
+    cfg = GeneratorConfig(seed=42, total_leads=1000)
+    random.seed(cfg.seed)
+    buyers = generate_buyers(cfg)
+    servers = generate_servers(cfg)
+    domains = generate_domains(cfg, buyers, servers)
+    offers = generate_offers(cfg)
+    leads = generate_leads(cfg, buyers, domains, offers)
+    incomes, expenses = generate_financials(cfg, buyers, leads, offers, domains, servers)
+    for inc in incomes:
+        assert inc["amount"] > 0
+    for exp in expenses:
+        assert exp["amount"] > 0
