@@ -15,6 +15,10 @@ peft==0.14.*
 transformers==4.*
 huggingface-hub==0.28.*
 
+# Settings & SSE
+pydantic-settings==2.*
+sse-starlette==2.*
+
 # Testing
 pytest==8.*
 pytest-asyncio==0.25.*
